@@ -117,6 +117,62 @@ export type Database = {
         }
         Relationships: []
       }
+      risk_findings: {
+        Row: {
+          created_at: string
+          description: string
+          finding_type: string
+          id: string
+          metadata: Json | null
+          recommendations: string | null
+          related_entry_id: string | null
+          resolved_at: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          finding_type: string
+          id?: string
+          metadata?: Json | null
+          recommendations?: string | null
+          related_entry_id?: string | null
+          resolved_at?: string | null
+          severity: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          finding_type?: string
+          id?: string
+          metadata?: Json | null
+          recommendations?: string | null
+          related_entry_id?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_findings_related_entry_id_fkey"
+            columns: ["related_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
