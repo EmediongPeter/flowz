@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrendingUp, TrendingDown, DollarSign, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface MetricData {
   totalRevenue: number;
@@ -10,12 +20,14 @@ interface MetricData {
 }
 
 const DashboardHome = () => {
+  const navigate = useNavigate();
   const [metrics, setMetrics] = useState<MetricData>({
     totalRevenue: 0,
     totalCost: 0,
     netProfit: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchMetrics();
@@ -151,24 +163,74 @@ const DashboardHome = () => {
         </Card>
       </div>
 
-      <Card className="shadow-soft">
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <p className="text-muted-foreground">
-              • Create a new journal entry to record transactions
-            </p>
-            <p className="text-muted-foreground">
-              • View detailed reports in the Books of Account section
-            </p>
-            <p className="text-muted-foreground">
-              • All entries are automatically distributed to relevant books
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="shadow-soft">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardDescription className="px-6 text-muted-foreground">
+            Start by creating your first journal entry to see your financial data here.
+          </CardDescription>
+          <CardContent className="pt-6">
+            <Button variant="outline" className="w-full" onClick={() => navigate("/dashboard/entry")}>
+              Create Journal Entry
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/20 shadow-elegant">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Financial Statements
+            </CardTitle>
+          </CardHeader>
+          <CardDescription className="px-6 text-muted-foreground">
+            Generate comprehensive financial reports
+          </CardDescription>
+          <CardContent className="pt-6">
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full">
+                  Generate Financial Statements
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Select Financial Statement</DialogTitle>
+                  <DialogDescription>
+                    Choose which financial statement you'd like to view
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      navigate("/dashboard/profit-loss");
+                      setDialogOpen(false);
+                    }}
+                  >
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Profit and Loss Statement
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      navigate("/dashboard/balance-sheet");
+                      setDialogOpen(false);
+                    }}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Balance Sheet Statement
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

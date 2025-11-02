@@ -8,6 +8,8 @@ import Dashboard from "./pages/Dashboard";
 import DashboardHome from "./pages/DashboardHome";
 import JournalEntry from "./pages/JournalEntry";
 import BookView from "./pages/BookView";
+import ProfitLoss from "./pages/ProfitLoss";
+import BalanceSheet from "./pages/BalanceSheet";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,15 +26,9 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />}>
             <Route index element={<DashboardHome />} />
             <Route path="entry" element={<JournalEntry />} />
-            <Route path="ledger" element={<BookView />} />
-            <Route path="cash" element={<BookView />} />
-            <Route path="bank" element={<BookView />} />
-            <Route path="sales" element={<BookView />} />
-            <Route path="purchase" element={<BookView />} />
-            <Route path="payable" element={<BookView />} />
-            <Route path="receivable" element={<BookView />} />
-            <Route path="inventory" element={<BookView />} />
-            <Route path="payroll" element={<BookView />} />
+            <Route path="profit-loss" element={<ProfitLoss />} />
+            <Route path="balance-sheet" element={<BalanceSheet />} />
+            <Route path=":bookType" element={<BookView />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
