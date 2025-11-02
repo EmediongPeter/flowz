@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { RiskWidget } from "@/components/RiskWidget";
 
 interface MetricData {
   totalRevenue: number;
@@ -163,7 +164,7 @@ const DashboardHome = () => {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card className="shadow-soft">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
@@ -230,6 +231,8 @@ const DashboardHome = () => {
             </Dialog>
           </CardContent>
         </Card>
+
+        <RiskWidget />
       </div>
     </div>
   );

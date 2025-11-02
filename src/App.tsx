@@ -10,6 +10,7 @@ import JournalEntry from "./pages/JournalEntry";
 import BookView from "./pages/BookView";
 import ProfitLoss from "./pages/ProfitLoss";
 import BalanceSheet from "./pages/BalanceSheet";
+import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />}>
             <Route index element={<DashboardHome />} />
             <Route path="entry" element={<JournalEntry />} />
+            <Route path="analytics" element={<Analytics />} />
             <Route path="profit-loss" element={<ProfitLoss />} />
             <Route path="balance-sheet" element={<BalanceSheet />} />
             <Route path=":bookType" element={<BookView />} />
