@@ -2,3 +2,6 @@ project_id = "ikwwmkkkfynmwgxmnnbh"
 
 [functions.analyze-risks]
 verify_jwt = true
+
+[functions.chat-adidy]
+verify_jwt = true

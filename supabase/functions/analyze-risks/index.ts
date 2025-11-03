@@ -111,76 +111,221 @@ serve(async (req) => {
       }
     });
 
-    // Calculate financial metrics for AI analysis
+    // Calculate comprehensive financial metrics
     let totalRevenue = 0;
     let totalExpenses = 0;
     let cashBalance = 0;
     let bankBalance = 0;
+    let totalAssets = 0;
+    let totalLiabilities = 0;
+    let costOfGoodsSold = 0;
+    let operatingExpenses = 0;
+    let inventory = 0;
+    let accountsReceivable = 0;
+    let accountsPayable = 0;
+
+    // Track monthly data for variance and trend analysis
+    const monthlyData = new Map();
 
     entries?.forEach((entry: any) => {
+      const entryDate = new Date(entry.entry_date);
+      const monthKey = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, { revenue: 0, expenses: 0, profit: 0 });
+      }
+
       entry.journal_entry_lines?.forEach((line: any) => {
         const amount = parseFloat(line.amount);
         
+        // Revenue tracking
         if (line.account_type === 'sales' && line.entry_type === 'credit') {
           totalRevenue += amount;
+          monthlyData.get(monthKey).revenue += amount;
         }
+        
+        // Expense tracking
         if (['purchase', 'payroll', 'accounts_payable'].includes(line.account_type) && line.entry_type === 'debit') {
           totalExpenses += amount;
+          monthlyData.get(monthKey).expenses += amount;
         }
+        
+        // Cost of Goods Sold
+        if (line.account_type === 'purchase' && line.entry_type === 'debit') {
+          costOfGoodsSold += amount;
+        }
+        
+        // Operating Expenses
+        if (['payroll', 'office_expense'].includes(line.account_type) && line.entry_type === 'debit') {
+          operatingExpenses += amount;
+        }
+        
+        // Balance Sheet items
         if (line.account_type === 'cash') {
           cashBalance += line.entry_type === 'debit' ? amount : -amount;
         }
         if (line.account_type === 'bank') {
           bankBalance += line.entry_type === 'debit' ? amount : -amount;
+          totalAssets += line.entry_type === 'debit' ? amount : -amount;
+        }
+        if (line.account_type === 'inventory' && line.entry_type === 'debit') {
+          inventory += amount;
+          totalAssets += amount;
+        }
+        if (line.account_type === 'accounts_receivable' && line.entry_type === 'debit') {
+          accountsReceivable += amount;
+          totalAssets += amount;
+        }
+        if (line.account_type === 'accounts_payable' && line.entry_type === 'credit') {
+          accountsPayable += amount;
+          totalLiabilities += amount;
         }
       });
     });
 
+    // Calculate profitability metrics
     const netProfit = totalRevenue - totalExpenses;
+    const grossProfit = totalRevenue - costOfGoodsSold;
     const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+    const grossProfitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+    const operatingProfitMargin = totalRevenue > 0 ? ((grossProfit - operatingExpenses) / totalRevenue) * 100 : 0;
 
-    // Prepare data summary for AI
+    // Calculate financial ratios
+    const currentRatio = totalLiabilities > 0 ? totalAssets / totalLiabilities : 0;
+    const quickRatio = totalLiabilities > 0 ? (totalAssets - inventory) / totalLiabilities : 0;
+    const debtToEquity = (totalAssets - totalLiabilities) > 0 ? totalLiabilities / (totalAssets - totalLiabilities) : 0;
+    const workingCapital = totalAssets - totalLiabilities;
+
+    // Calculate ROI and ROE
+    const equity = totalAssets - totalLiabilities;
+    const roi = totalAssets > 0 ? (netProfit / totalAssets) * 100 : 0;
+    const roe = equity > 0 ? (netProfit / equity) * 100 : 0;
+
+    // Variance analysis (compare current month to previous)
+    const months = Array.from(monthlyData.keys()).sort();
+    let revenueVariance = 0;
+    let expenseVariance = 0;
+    if (months.length >= 2) {
+      const currentMonth = monthlyData.get(months[months.length - 1]);
+      const previousMonth = monthlyData.get(months[months.length - 2]);
+      revenueVariance = currentMonth.revenue - previousMonth.revenue;
+      expenseVariance = currentMonth.expenses - previousMonth.expenses;
+    }
+
+    // Cash flow analysis
+    const operatingCashFlow = netProfit + (accountsPayable - accountsReceivable);
+    const cashFlowToDebtRatio = totalLiabilities > 0 ? operatingCashFlow / totalLiabilities : 0;
+
+    // Prepare comprehensive data summary for AI
     const dataSummary = {
       total_entries: entries?.length || 0,
+      
+      // Income Statement Metrics
       total_revenue: totalRevenue,
+      cost_of_goods_sold: costOfGoodsSold,
+      gross_profit: grossProfit,
+      operating_expenses: operatingExpenses,
       total_expenses: totalExpenses,
       net_profit: netProfit,
+      
+      // Profitability Ratios
       profit_margin: profitMargin,
+      gross_profit_margin: grossProfitMargin,
+      operating_profit_margin: operatingProfitMargin,
+      
+      // Balance Sheet
+      total_assets: totalAssets,
+      total_liabilities: totalLiabilities,
+      equity: equity,
       cash_balance: cashBalance,
       bank_balance: bankBalance,
+      inventory: inventory,
+      accounts_receivable: accountsReceivable,
+      accounts_payable: accountsPayable,
+      working_capital: workingCapital,
+      
+      // Financial Ratios
+      current_ratio: currentRatio,
+      quick_ratio: quickRatio,
+      debt_to_equity: debtToEquity,
+      roi: roi,
+      roe: roe,
+      
+      // Cash Flow
+      operating_cash_flow: operatingCashFlow,
+      cash_flow_to_debt_ratio: cashFlowToDebtRatio,
+      
+      // Variance Analysis
+      revenue_variance: revenueVariance,
+      expense_variance: expenseVariance,
+      
       rule_based_findings: findings.length
     };
 
     console.log('Financial summary:', dataSummary);
 
-    // Call Lovable AI for intelligent analysis
-    const aiPrompt = `You are a financial risk analyst. Analyze the following bookkeeping data and identify potential risks, threats, and anomalies.
+    // Call Lovable AI for comprehensive financial analysis
+    const aiPrompt = `You are an expert financial analyst specializing in cost accounting, management accounting, financial accounting, and performance analysis. Analyze the comprehensive financial data below and identify risks, threats, fraud indicators, and provide actionable insights.
 
-Financial Summary:
-- Total Entries: ${dataSummary.total_entries}
+COMPREHENSIVE FINANCIAL DATA:
+
+Income Statement:
 - Total Revenue: $${dataSummary.total_revenue.toLocaleString()}
-- Total Expenses: $${dataSummary.total_expenses.toLocaleString()}
+- Cost of Goods Sold: $${dataSummary.cost_of_goods_sold.toLocaleString()}
+- Gross Profit: $${dataSummary.gross_profit.toLocaleString()}
+- Operating Expenses: $${dataSummary.operating_expenses.toLocaleString()}
 - Net Profit: $${dataSummary.net_profit.toLocaleString()}
-- Profit Margin: ${dataSummary.profit_margin.toFixed(2)}%
-- Cash Balance: $${dataSummary.cash_balance.toLocaleString()}
-- Bank Balance: $${dataSummary.bank_balance.toLocaleString()}
-- Rule-based findings already detected: ${dataSummary.rule_based_findings}
 
-Analyze this data and identify 3-5 additional financial risks or patterns that aren't obvious from simple rules. Consider:
-1. Cash flow issues or liquidity concerns
-2. Unusual patterns or trends
-3. Budget concerns or financial sustainability
-4. Fraud indicators or anomalies
-5. Business health indicators
+Profitability Metrics:
+- Gross Profit Margin: ${dataSummary.gross_profit_margin.toFixed(2)}%
+- Operating Profit Margin: ${dataSummary.operating_profit_margin.toFixed(2)}%
+- Net Profit Margin: ${dataSummary.profit_margin.toFixed(2)}%
+- ROI: ${dataSummary.roi.toFixed(2)}%
+- ROE: ${dataSummary.roe.toFixed(2)}%
 
-Return ONLY a valid JSON array of findings (no markdown, no code blocks), each with this exact structure:
+Balance Sheet:
+- Total Assets: $${dataSummary.total_assets.toLocaleString()}
+- Total Liabilities: $${dataSummary.total_liabilities.toLocaleString()}
+- Equity: $${dataSummary.equity.toLocaleString()}
+- Working Capital: $${dataSummary.working_capital.toLocaleString()}
+- Cash: $${dataSummary.cash_balance.toLocaleString()}
+- Bank: $${dataSummary.bank_balance.toLocaleString()}
+- Inventory: $${dataSummary.inventory.toLocaleString()}
+- Accounts Receivable: $${dataSummary.accounts_receivable.toLocaleString()}
+- Accounts Payable: $${dataSummary.accounts_payable.toLocaleString()}
+
+Financial Ratios:
+- Current Ratio: ${dataSummary.current_ratio.toFixed(2)}
+- Quick Ratio: ${dataSummary.quick_ratio.toFixed(2)}
+- Debt-to-Equity: ${dataSummary.debt_to_equity.toFixed(2)}
+- Cash Flow to Debt: ${dataSummary.cash_flow_to_debt_ratio.toFixed(2)}
+
+Variance Analysis:
+- Revenue Variance (vs prior period): $${dataSummary.revenue_variance.toLocaleString()}
+- Expense Variance (vs prior period): $${dataSummary.expense_variance.toLocaleString()}
+
+Cash Flow:
+- Operating Cash Flow: $${dataSummary.operating_cash_flow.toLocaleString()}
+
+ANALYSIS REQUIREMENTS:
+Identify 5-8 critical insights covering:
+1. **Cost Management**: Analyze COGS, operating expenses, cost efficiency, cost-volume-profit relationships
+2. **Profitability Analysis**: Evaluate margins, pricing strategies, profit optimization opportunities
+3. **Liquidity & Solvency**: Assess cash position, working capital, debt coverage, bankruptcy risk
+4. **Performance Metrics**: Evaluate ROI, ROE, asset utilization, operational efficiency
+5. **Variance Analysis**: Identify significant variances, budget deviations, trend anomalies
+6. **Fraud Indicators**: Detect unusual patterns, red flags, potential manipulation
+7. **Financial Health**: Overall business sustainability, growth potential, risk exposure
+8. **Price & Cost Strategies**: Pricing optimization, cost reduction opportunities
+
+Return ONLY a valid JSON array (no markdown, no code blocks):
 [
   {
-    "finding_type": "cash_flow_risk|fraud_indicator|budget_concern|pattern_anomaly|sustainability_risk",
+    "finding_type": "cost_management|profitability_analysis|liquidity_risk|fraud_indicator|variance_concern|performance_issue|sustainability_risk|pricing_strategy",
     "severity": "low|medium|high|critical",
-    "title": "Brief title",
-    "description": "Detailed description of the issue",
-    "recommendations": "Actionable recommendations"
+    "title": "Brief specific title",
+    "description": "Detailed analysis with specific numbers and percentages",
+    "recommendations": "Concrete actionable steps with expected impact"
   }
 ]`;
 
