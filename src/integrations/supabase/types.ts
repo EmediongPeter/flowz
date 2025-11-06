@@ -14,84 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
-      journal_entries: {
+      entries: {
         Row: {
+          allowances: number | null
+          amount_before_tax: number | null
+          amount_paid: number | null
+          balance_due: number | null
+          bank_account: string | null
+          bank_name: string | null
+          book_category: Database["public"]["Enums"]["book_category"]
+          category: string | null
           created_at: string
+          credit_account: string | null
+          debit_account: string | null
+          deductions: number | null
           description: string
-          entry_date: string
+          discount: number | null
+          due_date: string | null
+          employee_id: string | null
+          gross_pay: number | null
           id: string
+          ledger_category: string | null
+          net_pay: number | null
+          notes: string | null
+          party_contact: string | null
+          party_name: string | null
+          party_type: Database["public"]["Enums"]["party_type"] | null
+          payment_mode: Database["public"]["Enums"]["payment_mode"] | null
+          payment_period: string | null
+          payment_reference: string | null
+          payment_type: Database["public"]["Enums"]["payment_type"] | null
+          product_service_name: string | null
+          quantity: number | null
           reference_number: string | null
+          tax_amount: number | null
+          tax_rate: number | null
+          total_amount: number
+          transaction_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          unit_price: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          allowances?: number | null
+          amount_before_tax?: number | null
+          amount_paid?: number | null
+          balance_due?: number | null
+          bank_account?: string | null
+          bank_name?: string | null
+          book_category: Database["public"]["Enums"]["book_category"]
+          category?: string | null
           created_at?: string
+          credit_account?: string | null
+          debit_account?: string | null
+          deductions?: number | null
           description: string
-          entry_date?: string
+          discount?: number | null
+          due_date?: string | null
+          employee_id?: string | null
+          gross_pay?: number | null
           id?: string
+          ledger_category?: string | null
+          net_pay?: number | null
+          notes?: string | null
+          party_contact?: string | null
+          party_name?: string | null
+          party_type?: Database["public"]["Enums"]["party_type"] | null
+          payment_mode?: Database["public"]["Enums"]["payment_mode"] | null
+          payment_period?: string | null
+          payment_reference?: string | null
+          payment_type?: Database["public"]["Enums"]["payment_type"] | null
+          product_service_name?: string | null
+          quantity?: number | null
           reference_number?: string | null
+          tax_amount?: number | null
+          tax_rate?: number | null
+          total_amount: number
+          transaction_date?: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          unit_price?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          allowances?: number | null
+          amount_before_tax?: number | null
+          amount_paid?: number | null
+          balance_due?: number | null
+          bank_account?: string | null
+          bank_name?: string | null
+          book_category?: Database["public"]["Enums"]["book_category"]
+          category?: string | null
           created_at?: string
+          credit_account?: string | null
+          debit_account?: string | null
+          deductions?: number | null
           description?: string
-          entry_date?: string
+          discount?: number | null
+          due_date?: string | null
+          employee_id?: string | null
+          gross_pay?: number | null
           id?: string
+          ledger_category?: string | null
+          net_pay?: number | null
+          notes?: string | null
+          party_contact?: string | null
+          party_name?: string | null
+          party_type?: Database["public"]["Enums"]["party_type"] | null
+          payment_mode?: Database["public"]["Enums"]["payment_mode"] | null
+          payment_period?: string | null
+          payment_reference?: string | null
+          payment_type?: Database["public"]["Enums"]["payment_type"] | null
+          product_service_name?: string | null
+          quantity?: number | null
           reference_number?: string | null
+          tax_amount?: number | null
+          tax_rate?: number | null
+          total_amount?: number
+          transaction_date?: string
+          transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          unit_price?: number | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "journal_entries_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      journal_entry_lines: {
-        Row: {
-          account_name: string
-          account_type: Database["public"]["Enums"]["account_type"]
-          amount: number
-          created_at: string
-          entry_type: Database["public"]["Enums"]["entry_type"]
-          id: string
-          journal_entry_id: string
-          notes: string | null
-        }
-        Insert: {
-          account_name: string
-          account_type: Database["public"]["Enums"]["account_type"]
-          amount: number
-          created_at?: string
-          entry_type: Database["public"]["Enums"]["entry_type"]
-          id?: string
-          journal_entry_id: string
-          notes?: string | null
-        }
-        Update: {
-          account_name?: string
-          account_type?: Database["public"]["Enums"]["account_type"]
-          amount?: number
-          created_at?: string
-          entry_type?: Database["public"]["Enums"]["entry_type"]
-          id?: string
-          journal_entry_id?: string
-          notes?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "journal_entry_lines_journal_entry_id_fkey"
-            columns: ["journal_entry_id"]
-            isOneToOne: false
-            referencedRelation: "journal_entries"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -163,35 +210,59 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "risk_findings_related_entry_id_fkey"
-            columns: ["related_entry_id"]
-            isOneToOne: false
-            referencedRelation: "journal_entries"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      assign_book_category: {
+        Args: { tx_type: Database["public"]["Enums"]["transaction_type"] }
+        Returns: Database["public"]["Enums"]["book_category"]
+      }
     }
     Enums: {
-      account_type:
+      book_category:
+        | "sales_book"
+        | "purchase_book"
+        | "sales_return_book"
+        | "purchase_return_book"
+        | "cash_book"
+        | "bank_book"
+        | "payroll_book"
+        | "general_journal"
+        | "petty_cash_book"
+        | "bills_receivable_book"
+        | "bills_payable_book"
+      party_type: "customer" | "supplier" | "employee" | "other"
+      payment_mode:
         | "cash"
-        | "bank"
-        | "sales"
-        | "purchase"
-        | "accounts_payable"
-        | "accounts_receivable"
-        | "inventory"
+        | "bank_transfer"
+        | "cheque"
+        | "pos"
+        | "online"
+        | "mobile_money"
+      payment_type: "cash" | "bank" | "credit"
+      transaction_type:
+        | "cash_sale"
+        | "credit_sale"
+        | "cash_purchase"
+        | "credit_purchase"
+        | "sales_return"
+        | "purchase_return"
+        | "cash_receipt"
+        | "cash_payment"
+        | "bank_receipt"
+        | "bank_payment"
         | "payroll"
-        | "other"
-      entry_type: "debit" | "credit"
+        | "expense"
+        | "asset_purchase"
+        | "asset_disposal"
+        | "loan_received"
+        | "loan_payment"
+        | "adjustment"
+        | "opening_balance"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -319,18 +390,49 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      account_type: [
-        "cash",
-        "bank",
-        "sales",
-        "purchase",
-        "accounts_payable",
-        "accounts_receivable",
-        "inventory",
-        "payroll",
-        "other",
+      book_category: [
+        "sales_book",
+        "purchase_book",
+        "sales_return_book",
+        "purchase_return_book",
+        "cash_book",
+        "bank_book",
+        "payroll_book",
+        "general_journal",
+        "petty_cash_book",
+        "bills_receivable_book",
+        "bills_payable_book",
       ],
-      entry_type: ["debit", "credit"],
+      party_type: ["customer", "supplier", "employee", "other"],
+      payment_mode: [
+        "cash",
+        "bank_transfer",
+        "cheque",
+        "pos",
+        "online",
+        "mobile_money",
+      ],
+      payment_type: ["cash", "bank", "credit"],
+      transaction_type: [
+        "cash_sale",
+        "credit_sale",
+        "cash_purchase",
+        "credit_purchase",
+        "sales_return",
+        "purchase_return",
+        "cash_receipt",
+        "cash_payment",
+        "bank_receipt",
+        "bank_payment",
+        "payroll",
+        "expense",
+        "asset_purchase",
+        "asset_disposal",
+        "loan_received",
+        "loan_payment",
+        "adjustment",
+        "opening_balance",
+      ],
     },
   },
 } as const
