@@ -13,36 +13,43 @@ import {
 
 interface BookEntry {
   id: string;
-  entry_date: string;
+  transaction_date: string;
   description: string;
-  account_name: string;
-  entry_type: string;
-  amount: number;
+  party_name: string | null;
+  transaction_type: string;
+  total_amount: number;
   reference_number: string | null;
+  book_category: string;
 }
 
 const bookTitles: Record<string, string> = {
-  ledger: "Ledger Books",
-  cash: "Cash Book",
-  bank: "Bank Book",
-  sales: "Sales Book",
-  purchase: "Purchase Book",
-  payable: "Accounts Payable",
-  receivable: "Accounts Receivable",
-  inventory: "Inventory Book",
-  payroll: "Payroll",
+  "book-view": "All Entries",
+  "sales-book": "Sales Book",
+  "purchase-book": "Purchase Book",
+  "cash-book": "Cash Book",
+  "bank-book": "Bank Book",
+  "payroll-book": "Payroll Book",
+  "petty-cash-book": "Petty Cash Book",
+  "general-journal": "General Journal",
+  "sales-return-book": "Sales Return Book",
+  "purchase-return-book": "Purchase Return Book",
+  "bills-receivable-book": "Bills Receivable Book",
+  "bills-payable-book": "Bills Payable Book",
 };
 
-const accountTypeMap: Record<string, string> = {
-  ledger: "other",
-  cash: "cash",
-  bank: "bank",
-  sales: "sales",
-  purchase: "purchase",
-  payable: "accounts_payable",
-  receivable: "accounts_receivable",
-  inventory: "inventory",
-  payroll: "payroll",
+const bookCategoryMap: Record<string, string> = {
+  "book-view": "all",
+  "sales-book": "sales_book",
+  "purchase-book": "purchase_book",
+  "cash-book": "cash_book",
+  "bank-book": "bank_book",
+  "payroll-book": "payroll_book",
+  "petty-cash-book": "petty_cash_book",
+  "general-journal": "general_journal",
+  "sales-return-book": "sales_return_book",
+  "purchase-return-book": "purchase_return_book",
+  "bills-receivable-book": "bills_receivable_book",
+  "bills-payable-book": "bills_payable_book",
 };
 
 const BookView = () => {
@@ -59,36 +66,22 @@ const BookView = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const accountType = bookType ? accountTypeMap[bookType] : "other";
+      const bookCategory = bookType ? bookCategoryMap[bookType] : "all";
 
-      const { data, error } = await supabase
-        .from("journal_entry_lines")
-        .select(`
-          *,
-          journal_entries!inner(
-            user_id,
-            entry_date,
-            description,
-            reference_number
-          )
-        `)
-        .eq("journal_entries.user_id", user.id)
-        .eq("account_type", accountType as any)
-        .order("created_at", { ascending: false });
+      let query = supabase
+        .from("entries")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (bookCategory !== "all") {
+        query = query.eq("book_category", bookCategory as any);
+      }
+
+      const { data, error } = await query.order("transaction_date", { ascending: false });
 
       if (error) throw error;
 
-      const formattedEntries = data.map((item: any) => ({
-        id: item.id,
-        entry_date: item.journal_entries.entry_date,
-        description: item.journal_entries.description,
-        account_name: item.account_name,
-        entry_type: item.entry_type,
-        amount: parseFloat(item.amount),
-        reference_number: item.journal_entries.reference_number,
-      }));
-
-      setEntries(formattedEntries);
+      setEntries(data || []);
     } catch (error: any) {
       console.error("Error fetching entries:", error);
     } finally {
@@ -111,6 +104,10 @@ const BookView = () => {
     });
   };
 
+  const formatTransactionType = (type: string) => {
+    return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -119,14 +116,14 @@ const BookView = () => {
     );
   }
 
-  const title = bookType ? bookTitles[bookType] : "Book View";
+  const title = bookType ? bookTitles[bookType] || "Book View" : "Book View";
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-2">{title}</h1>
         <p className="text-muted-foreground">
-          Entries automatically distributed from journal entries
+          Entries automatically categorized by transaction type
         </p>
       </div>
 
@@ -139,7 +136,7 @@ const BookView = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground">No entries found for this book</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Create journal entries to see transactions here
+                Create entries to see transactions here
               </p>
             </div>
           ) : (
@@ -150,7 +147,7 @@ const BookView = () => {
                     <TableHead>Date</TableHead>
                     <TableHead>Reference</TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead>Account</TableHead>
+                    <TableHead>Party</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
@@ -159,26 +156,20 @@ const BookView = () => {
                   {entries.map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell className="font-medium">
-                        {formatDate(entry.entry_date)}
+                        {formatDate(entry.transaction_date)}
                       </TableCell>
                       <TableCell>
                         {entry.reference_number || "-"}
                       </TableCell>
                       <TableCell>{entry.description}</TableCell>
-                      <TableCell>{entry.account_name}</TableCell>
+                      <TableCell>{entry.party_name || "-"}</TableCell>
                       <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                            entry.entry_type === "debit"
-                              ? "bg-destructive/10 text-destructive"
-                              : "bg-success/10 text-success"
-                          }`}
-                        >
-                          {entry.entry_type}
+                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-primary/10 text-primary">
+                          {formatTransactionType(entry.transaction_type)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {formatCurrency(entry.amount)}
+                        {formatCurrency(parseFloat(entry.total_amount.toString()))}
                       </TableCell>
                     </TableRow>
                   ))}

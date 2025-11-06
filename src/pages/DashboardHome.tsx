@@ -40,32 +40,29 @@ const DashboardHome = () => {
       if (!user) return;
 
       const { data: entries, error } = await supabase
-        .from("journal_entry_lines")
-        .select(`
-          *,
-          journal_entries!inner(user_id)
-        `)
-        .eq("journal_entries.user_id", user.id);
+        .from("entries")
+        .select("*")
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
       let revenue = 0;
       let cost = 0;
 
-      entries?.forEach((line: any) => {
-        const amount = parseFloat(String(line.amount));
+      entries?.forEach((entry: any) => {
+        const amount = parseFloat(entry.total_amount || 0);
         
-        // Revenue accounts (credit increases revenue)
-        if (line.account_type === "sales" && line.entry_type === "credit") {
+        // Revenue from sales
+        if (entry.transaction_type === "cash_sale" || entry.transaction_type === "credit_sale") {
           revenue += amount;
         }
         
-        // Cost accounts (debit increases cost)
+        // Costs from purchases and expenses
         if (
-          (line.account_type === "purchase" || 
-           line.account_type === "payroll" ||
-           line.account_type === "accounts_payable") && 
-          line.entry_type === "debit"
+          entry.transaction_type === "cash_purchase" || 
+          entry.transaction_type === "credit_purchase" ||
+          entry.transaction_type === "expense" ||
+          entry.transaction_type === "payroll"
         ) {
           cost += amount;
         }
@@ -120,7 +117,7 @@ const DashboardHome = () => {
               {formatCurrency(metrics.totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              From sales and revenue accounts
+              From sales transactions
             </p>
           </CardContent>
         </Card>
@@ -170,11 +167,11 @@ const DashboardHome = () => {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardDescription className="px-6 text-muted-foreground">
-            Start by creating your first journal entry to see your financial data here.
+            Start by creating your first entry to see your financial data here.
           </CardDescription>
           <CardContent className="pt-6">
             <Button variant="outline" className="w-full" onClick={() => navigate("/dashboard/entry")}>
-              Create Journal Entry
+              Create Entry
             </Button>
           </CardContent>
         </Card>

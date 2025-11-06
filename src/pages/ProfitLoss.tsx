@@ -7,8 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 interface AccountData {
   accountName: string;
-  debit: number;
-  credit: number;
+  amount: number;
 }
 
 const ProfitLoss = () => {
@@ -25,49 +24,48 @@ const ProfitLoss = () => {
 
   const fetchProfitLossData = async () => {
     try {
-      const { data: lines, error } = await supabase
-        .from("journal_entry_lines")
-        .select("account_name, account_type, entry_type, amount");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: entries, error } = await supabase
+        .from("entries")
+        .select("*")
+        .eq("user_id", user.id);
 
       if (error) throw error;
-
-      const accountMap = new Map<string, AccountData>();
-
-      lines?.forEach((line) => {
-        const existing = accountMap.get(line.account_name) || {
-          accountName: line.account_name,
-          debit: 0,
-          credit: 0,
-        };
-
-        if (line.entry_type === "debit") {
-          existing.debit += Number(line.amount);
-        } else {
-          existing.credit += Number(line.amount);
-        }
-
-        accountMap.set(line.account_name, existing);
-      });
 
       const revenue: AccountData[] = [];
       const expenses: AccountData[] = [];
       let revTotal = 0;
       let expTotal = 0;
 
-      accountMap.forEach((account) => {
-        const netAmount = account.credit - account.debit;
+      const revenueMap = new Map<string, number>();
+      const expenseMap = new Map<string, number>();
+
+      entries?.forEach((entry: any) => {
+        const amount = parseFloat(entry.total_amount || 0);
+        const accountName = entry.credit_account || entry.description;
         
-        if (account.accountName.toLowerCase().includes("revenue") || 
-            account.accountName.toLowerCase().includes("sales") ||
-            account.accountName.toLowerCase().includes("income")) {
-          revenue.push({ ...account });
-          revTotal += netAmount;
-        } else if (account.accountName.toLowerCase().includes("expense") ||
-                   account.accountName.toLowerCase().includes("cost") ||
-                   account.accountName.toLowerCase().includes("purchase")) {
-          expenses.push({ ...account });
-          expTotal += Math.abs(netAmount);
+        if (entry.transaction_type === "cash_sale" || entry.transaction_type === "credit_sale") {
+          revenueMap.set(accountName, (revenueMap.get(accountName) || 0) + amount);
+          revTotal += amount;
+        } else if (
+          entry.transaction_type === "cash_purchase" ||
+          entry.transaction_type === "credit_purchase" ||
+          entry.transaction_type === "expense" ||
+          entry.transaction_type === "payroll"
+        ) {
+          expenseMap.set(accountName, (expenseMap.get(accountName) || 0) + amount);
+          expTotal += amount;
         }
+      });
+
+      revenueMap.forEach((amount, accountName) => {
+        revenue.push({ accountName, amount });
+      });
+
+      expenseMap.forEach((amount, accountName) => {
+        expenses.push({ accountName, amount });
       });
 
       setRevenueAccounts(revenue);
@@ -117,16 +115,16 @@ const ProfitLoss = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-8">
-            {/* Expenses (Debit) Side */}
+            {/* Expenses Side */}
             <div className="border-r-2 border-border pr-6">
               <h3 className="text-lg font-semibold mb-4 text-center bg-muted py-2 rounded">
-                Expenses (Debit)
+                Expenses
               </h3>
               <div className="space-y-2">
                 {expenseAccounts.map((account, idx) => (
                   <div key={idx} className="flex justify-between py-1 border-b border-border/50">
                     <span className="text-sm">{account.accountName}</span>
-                    <span className="text-sm font-medium">{formatCurrency(account.debit)}</span>
+                    <span className="text-sm font-medium">{formatCurrency(account.amount)}</span>
                   </div>
                 ))}
                 {netProfit > 0 && (
@@ -142,16 +140,16 @@ const ProfitLoss = () => {
               </div>
             </div>
 
-            {/* Revenue (Credit) Side */}
+            {/* Revenue Side */}
             <div className="pl-6">
               <h3 className="text-lg font-semibold mb-4 text-center bg-muted py-2 rounded">
-                Revenue (Credit)
+                Revenue
               </h3>
               <div className="space-y-2">
                 {revenueAccounts.map((account, idx) => (
                   <div key={idx} className="flex justify-between py-1 border-b border-border/50">
                     <span className="text-sm">{account.accountName}</span>
-                    <span className="text-sm font-medium">{formatCurrency(account.credit)}</span>
+                    <span className="text-sm font-medium">{formatCurrency(account.amount)}</span>
                   </div>
                 ))}
                 {netProfit < 0 && (

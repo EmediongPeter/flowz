@@ -7,8 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 interface AccountData {
   accountName: string;
-  debit: number;
-  credit: number;
+  amount: number;
 }
 
 const BalanceSheet = () => {
@@ -27,29 +26,15 @@ const BalanceSheet = () => {
 
   const fetchBalanceSheetData = async () => {
     try {
-      const { data: lines, error } = await supabase
-        .from("journal_entry_lines")
-        .select("account_name, account_type, entry_type, amount");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: entries, error } = await supabase
+        .from("entries")
+        .select("*")
+        .eq("user_id", user.id);
 
       if (error) throw error;
-
-      const accountMap = new Map<string, AccountData>();
-
-      lines?.forEach((line) => {
-        const existing = accountMap.get(line.account_name) || {
-          accountName: line.account_name,
-          debit: 0,
-          credit: 0,
-        };
-
-        if (line.entry_type === "debit") {
-          existing.debit += Number(line.amount);
-        } else {
-          existing.credit += Number(line.amount);
-        }
-
-        accountMap.set(line.account_name, existing);
-      });
 
       const assetAccounts: AccountData[] = [];
       const liabilityAccounts: AccountData[] = [];
@@ -58,27 +43,39 @@ const BalanceSheet = () => {
       let liabilitiesTotal = 0;
       let equityTotal = 0;
 
-      accountMap.forEach((account) => {
-        const netAmount = account.debit - account.credit;
-        const accountLower = account.accountName.toLowerCase();
+      // Group by ledger categories
+      const accountMap = new Map<string, number>();
+
+      entries?.forEach((entry) => {
+        const amount = parseFloat(entry.total_amount.toString());
+        const accountKey = entry.debit_account || entry.description;
+        
+        if (accountKey) {
+          accountMap.set(accountKey, (accountMap.get(accountKey) || 0) + amount);
+        }
+      });
+
+      // Categorize accounts
+      accountMap.forEach((amount, accountName) => {
+        const accountLower = accountName.toLowerCase();
         
         if (accountLower.includes("cash") || 
             accountLower.includes("bank") ||
             accountLower.includes("inventory") ||
             accountLower.includes("receivable") ||
             accountLower.includes("asset")) {
-          assetAccounts.push({ ...account });
-          assetsTotal += Math.abs(netAmount);
+          assetAccounts.push({ accountName, amount });
+          assetsTotal += amount;
         } else if (accountLower.includes("payable") ||
                    accountLower.includes("liability") ||
                    accountLower.includes("loan")) {
-          liabilityAccounts.push({ ...account });
-          liabilitiesTotal += Math.abs(netAmount);
+          liabilityAccounts.push({ accountName, amount });
+          liabilitiesTotal += amount;
         } else if (accountLower.includes("capital") ||
                    accountLower.includes("equity") ||
                    accountLower.includes("owner")) {
-          equityAccounts.push({ ...account });
-          equityTotal += Math.abs(netAmount);
+          equityAccounts.push({ accountName, amount });
+          equityTotal += amount;
         }
       });
 
@@ -129,16 +126,16 @@ const BalanceSheet = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-8">
-            {/* Assets (Debit) Side */}
+            {/* Assets Side */}
             <div className="border-r-2 border-border pr-6">
               <h3 className="text-lg font-semibold mb-4 text-center bg-muted py-2 rounded">
-                Assets (Debit)
+                Assets
               </h3>
               <div className="space-y-2">
                 {assets.map((account, idx) => (
                   <div key={idx} className="flex justify-between py-1 border-b border-border/50">
                     <span className="text-sm">{account.accountName}</span>
-                    <span className="text-sm font-medium">{formatCurrency(account.debit)}</span>
+                    <span className="text-sm font-medium">{formatCurrency(account.amount)}</span>
                   </div>
                 ))}
               </div>
@@ -148,10 +145,10 @@ const BalanceSheet = () => {
               </div>
             </div>
 
-            {/* Liabilities & Equity (Credit) Side */}
+            {/* Liabilities & Equity Side */}
             <div className="pl-6">
               <h3 className="text-lg font-semibold mb-4 text-center bg-muted py-2 rounded">
-                Liabilities & Equity (Credit)
+                Liabilities & Equity
               </h3>
               <div className="space-y-4">
                 <div>
@@ -160,7 +157,7 @@ const BalanceSheet = () => {
                     {liabilities.map((account, idx) => (
                       <div key={idx} className="flex justify-between py-1 border-b border-border/50">
                         <span className="text-sm">{account.accountName}</span>
-                        <span className="text-sm font-medium">{formatCurrency(account.credit)}</span>
+                        <span className="text-sm font-medium">{formatCurrency(account.amount)}</span>
                       </div>
                     ))}
                     <div className="flex justify-between py-1 font-semibold text-sm">
@@ -176,7 +173,7 @@ const BalanceSheet = () => {
                     {equity.map((account, idx) => (
                       <div key={idx} className="flex justify-between py-1 border-b border-border/50">
                         <span className="text-sm">{account.accountName}</span>
-                        <span className="text-sm font-medium">{formatCurrency(account.credit)}</span>
+                        <span className="text-sm font-medium">{formatCurrency(account.amount)}</span>
                       </div>
                     ))}
                     <div className="flex justify-between py-1 font-semibold text-sm">

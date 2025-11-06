@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import DashboardHome from "./pages/DashboardHome";
-import JournalEntry from "./pages/JournalEntry";
+import Entry from "./pages/Entry";
 import BookView from "./pages/BookView";
 import ProfitLoss from "./pages/ProfitLoss";
 import BalanceSheet from "./pages/BalanceSheet";
@@ -27,7 +27,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />}>
             <Route index element={<DashboardHome />} />
-            <Route path="entry" element={<JournalEntry />} />
+            <Route path="entry" element={<Entry />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="adidy" element={<Adidy />} />
             <Route path="profit-loss" element={<ProfitLoss />} />
