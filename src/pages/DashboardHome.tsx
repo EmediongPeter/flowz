@@ -12,7 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { RiskWidget } from "@/components/RiskWidget";
 
 interface MetricData {
   totalRevenue: number;
@@ -161,21 +160,7 @@ const DashboardHome = () => {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="shadow-soft">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardDescription className="px-6 text-muted-foreground">
-            Start by creating your first entry to see your financial data here.
-          </CardDescription>
-          <CardContent className="pt-6">
-            <Button variant="outline" className="w-full" onClick={() => navigate("/dashboard/entry")}>
-              Create Entry
-            </Button>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4 md:grid-cols-2">
         <Card className="border-primary/20 shadow-elegant">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -228,8 +213,6 @@ const DashboardHome = () => {
             </Dialog>
           </CardContent>
         </Card>
-
-        <RiskWidget />
       </div>
     </div>
   );
