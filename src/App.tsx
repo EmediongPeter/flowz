@@ -7,7 +7,6 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import DashboardHome from "./pages/DashboardHome";
 import Entry from "./pages/Entry";
-import Setup from "./pages/Setup";
 import BookView from "./pages/BookView";
 import ProfitLoss from "./pages/ProfitLoss";
 import BalanceSheet from "./pages/BalanceSheet";
@@ -29,7 +28,6 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />}>
             <Route index element={<DashboardHome />} />
             <Route path="entry" element={<Entry />} />
-            <Route path="setup" element={<Setup />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="adidy" element={<Adidy />} />
             <Route path="profit-loss" element={<ProfitLoss />} />

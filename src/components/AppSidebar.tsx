@@ -1,4 +1,4 @@
-import { Home, BookOpen, BookMarked, DollarSign, ShoppingCart, FileText, Users, Package, Wallet, ChevronDown, Shield, Bot, Settings } from "lucide-react";
+import { Home, BookOpen, BookMarked, DollarSign, ShoppingCart, FileText, Users, Package, Wallet, ChevronDown, Shield, Bot } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -17,7 +17,6 @@ import { useState } from "react";
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Journal Entry", url: "/dashboard/entry", icon: BookOpen },
-  { title: "Setup", url: "/dashboard/setup", icon: Settings },
   { title: "Risk Analytics", url: "/dashboard/analytics", icon: Shield },
   { title: "Adidy Assistant", url: "/dashboard/adidy", icon: Bot },
 ];
