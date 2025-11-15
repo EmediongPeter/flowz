@@ -140,6 +140,36 @@ export type Database = {
         }
         Relationships: []
       }
+      products: {
+        Row: {
+          bulk_price: number
+          created_at: string
+          id: string
+          product_name: string
+          unit_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bulk_price: number
+          created_at?: string
+          id?: string
+          product_name: string
+          unit_price: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bulk_price?: number
+          created_at?: string
+          id?: string
+          product_name?: string
+          unit_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -161,6 +191,39 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      profit_targets: {
+        Row: {
+          created_at: string
+          id: string
+          monthly_target: number
+          target_month: number
+          target_year: number
+          updated_at: string
+          user_id: string
+          yearly_target: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          monthly_target: number
+          target_month: number
+          target_year: number
+          updated_at?: string
+          user_id: string
+          yearly_target: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          monthly_target?: number
+          target_month?: number
+          target_year?: number
+          updated_at?: string
+          user_id?: string
+          yearly_target?: number
         }
         Relationships: []
       }
