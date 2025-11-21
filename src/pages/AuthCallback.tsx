@@ -1,23 +1,53 @@
-4          setStatus("Redirecting for onboarding...");
-          navigate("/onboarding");
-          return;
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+
+const AuthCallback = () => {
+  const navigate = useNavigate();
+  const [status, setStatus] = useState("Verifying your email...");
+
+  useEffect(() => {
+    const handleCallback = async () => {
+      try {
+        // Get the session from the URL
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log("🚀 ~ handleCallback ~ sessionError:", sessionError)
+        console.log("🚀 ~ handleCallback ~ session:", session)
+
+        if (sessionError) {
+          throw sessionError;
         }
 
-        // CASE B — Existing user with onboarding completed
-        if (profile.onboarding_completed) {
-          setStatus("Redirecting to dashboard...");
-          navigate("/dashboard");
-          return;
-        }
+        if (session) {
+          setStatus("Email verified! Redirecting...");
+          toast.success("Email verified successfully!");
 
-        // CASE C — Profile exists but onboarding incomplete
-        navigate("/onboarding");
-        
+          // Check if user has completed onboarding
+          const { data: profile, error: profileError } = await supabase
+            .from("profiles")
+            .select("onboarding_completed")
+            .eq("id", session.user.id)
+            .single();
+          console.log("🚀 ~ handleCallback ~ profileError:", profileError)
+
+          if (!profileError && Boolean(profile)) {
+            // User already completed onboarding, go to dashboard
+            navigate("/dashboard");
+          } else {
+            // First time user, go to onboarding
+            navigate("/onboarding");
+          }
+        } else {
+          setStatus("No active session. Redirecting to login...");
+          setTimeout(() => navigate("/auth"), 2000);
+        }
       } catch (error: any) {
-        console.log("Auth callback error:", error);
-        setStatus("Error verifying session. Redirecting...");
+        setStatus("Error verifying email. Redirecting...");
         toast.error(error.message);
-        setTimeout(() => navigate("/auth"), 1500);
+        setTimeout(() => navigate("/auth"), 2000);
       }
     };
 
