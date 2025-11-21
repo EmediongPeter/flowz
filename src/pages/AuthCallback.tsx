@@ -12,42 +12,48 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get the session from the URL
+        // 1. Retrieve Supabase session (Google login sets it here)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        console.log("🚀 ~ handleCallback ~ sessionError:", sessionError)
-        console.log("🚀 ~ handleCallback ~ session:", session)
 
-        if (sessionError) {
-          throw sessionError;
+        if (sessionError) throw sessionError;
+
+        if (!session) {
+          setStatus("No active session. Redirecting...");
+          setTimeout(() => navigate("/auth"), 1500);
+          return;
         }
 
-        if (session) {
-          setStatus("Email verified! Redirecting...");
-          toast.success("Email verified successfully!");
+        setStatus("Checking your profile...");
 
-          // Check if user has completed onboarding
-          const { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("onboarding_completed")
-            .eq("id", session.user.id)
-            .single();
-          console.log("🚀 ~ handleCallback ~ profileError:", profileError)
+        // 2. Check if user has an existing profile
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .maybeSingle();
 
-          if (!profileError && Boolean(profile)) {
-            // User already completed onboarding, go to dashboard
-            navigate("/dashboard");
-          } else {
-            // First time user, go to onboarding
-            navigate("/onboarding");
-          }
-        } else {
-          setStatus("No active session. Redirecting to login...");
-          setTimeout(() => navigate("/auth"), 2000);
+        // CASE A — New user: no profile exists yet
+        if (!profile) {
+          setStatus("Redirecting for onboarding...");
+          navigate("/onboarding");
+          return;
         }
+
+        // CASE B — Existing user with onboarding completed
+        if (profile.onboarding_completed) {
+          setStatus("Redirecting to dashboard...");
+          navigate("/dashboard");
+          return;
+        }
+
+        // CASE C — Profile exists but onboarding incomplete
+        navigate("/onboarding");
+        
       } catch (error: any) {
-        setStatus("Error verifying email. Redirecting...");
+        console.log("Auth callback error:", error);
+        setStatus("Error verifying session. Redirecting...");
         toast.error(error.message);
-        setTimeout(() => navigate("/auth"), 2000);
+        setTimeout(() => navigate("/auth"), 1500);
       }
     };
 
