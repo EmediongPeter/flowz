@@ -24,6 +24,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface MetricData {
   totalRevenue: number;
@@ -56,6 +69,9 @@ const DashboardHome = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [expenseData, setExpenseData] = useState<any[]>([]);
+  const [userName, setUserName] = useState("");
 
   // Product state
   const [products, setProducts] = useState<Product[]>([]);
@@ -91,6 +107,7 @@ const DashboardHome = () => {
 
       let revenue = 0;
       let cost = 0;
+      const expenseCategories: Record<string, number> = {};
 
       accounts?.forEach((account: any) => {
         const balance = parseFloat(account.net_balance || 0);
@@ -101,6 +118,10 @@ const DashboardHome = () => {
         } else if (account.account_type === 'expense') {
           // Expense: Debit is increase (positive net_balance)
           cost += balance;
+          // Aggregate expenses by account name for pie chart
+          if (balance > 0) {
+            expenseCategories[account.account_name] = (expenseCategories[account.account_name] || 0) + balance;
+          }
         }
       });
 
@@ -109,6 +130,22 @@ const DashboardHome = () => {
         totalCost: cost,
         netProfit: revenue - cost,
       });
+
+      // Prepare Pie Chart Data
+      const pieData = Object.entries(expenseCategories).map(([name, value]) => ({
+        name,
+        value,
+      }));
+      setExpenseData(pieData);
+
+      // Simulate Monthly Data (Mock for MVP as we don't have historical aggregation view yet)
+      // In a real app, we'd query a monthly_summary view
+      setMonthlyData([
+        { name: "Jan", revenue: revenue * 0.8, cost: cost * 0.7 },
+        { name: "Feb", revenue: revenue * 0.9, cost: cost * 0.8 },
+        { name: "Mar", revenue: revenue, cost: cost },
+      ]);
+
     } catch (error: any) {
       console.error("Error fetching metrics:", error);
     } finally {
@@ -145,6 +182,22 @@ const DashboardHome = () => {
         setMonthlyTarget(targetsData.monthly_target.toString());
         setYearlyTarget(targetsData.yearly_target.toString());
       }
+
+      // Fetch user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      if (profileData && profileData.full_name) {
+        setUserName(profileData.full_name);
+      } else {
+        // Fallback to email if no name
+        setUserName(user.email?.split('@')[0] || "User");
+      }
+
     } catch (error: any) {
       console.error("Error fetching setup data:", error);
     }
@@ -241,9 +294,11 @@ const DashboardHome = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          Welcome back, {userName} 👋
+        </h1>
         <p className="text-muted-foreground">
-          Overview of your financial performance
+          Here's an overview of your financial performance
         </p>
       </div>
 
@@ -299,6 +354,61 @@ const DashboardHome = () => {
             <p className="text-xs text-muted-foreground mt-1">
               Revenue minus total costs
             </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="shadow-soft">
+          <CardHeader>
+            <CardTitle>Revenue vs Expenses</CardTitle>
+            <CardDescription>Monthly financial performance</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="revenue" fill="#10b981" name="Revenue" />
+                  <Bar dataKey="cost" fill="#ef4444" name="Cost" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-soft">
+          <CardHeader>
+            <CardTitle>Expense Breakdown</CardTitle>
+            <CardDescription>Where your money is going</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={expenseData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {expenseData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"][index % 5]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
