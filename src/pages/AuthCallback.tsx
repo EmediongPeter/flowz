@@ -1,40 +1,4 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-
-const AuthCallback = () => {
-  const navigate = useNavigate();
-  const [status, setStatus] = useState("Verifying your email...");
-
-  useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        // 1. Retrieve Supabase session (Google login sets it here)
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError) throw sessionError;
-
-        if (!session) {
-          setStatus("No active session. Redirecting...");
-          setTimeout(() => navigate("/auth"), 1500);
-          return;
-        }
-
-        setStatus("Checking your profile...");
-
-        // 2. Check if user has an existing profile
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        // CASE A — New user: no profile exists yet
-        if (!profile) {
-          setStatus("Redirecting for onboarding...");
+4          setStatus("Redirecting for onboarding...");
           navigate("/onboarding");
           return;
         }
