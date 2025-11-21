@@ -13,8 +13,8 @@ interface AccountData {
 const ProfitLoss = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [revenueAccounts, setRevenueAccounts] = useState<AccountData[]>([]);
-  const [expenseAccounts, setExpenseAccounts] = useState<AccountData[]>([]);
+  const [revenue, setRevenue] = useState<AccountData[]>([]);
+  const [expenses, setExpenses] = useState<AccountData[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
 
@@ -27,53 +27,58 @@ const ProfitLoss = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: entries, error } = await supabase
-        .from("entries")
+      // Fetch from trial balance view
+      const { data: accounts, error } = await supabase
+        .from("view_trial_balance" as any)
         .select("*")
+        .in("account_type", ["income", "expense"])
         .eq("user_id", user.id);
 
       if (error) throw error;
 
-      const revenue: AccountData[] = [];
-      const expenses: AccountData[] = [];
-      let revTotal = 0;
-      let expTotal = 0;
+      const revenueAccounts: AccountData[] = [];
+      const expenseAccounts: AccountData[] = [];
 
-      const revenueMap = new Map<string, number>();
-      const expenseMap = new Map<string, number>();
+      let revenueTotal = 0;
+      let expenseTotal = 0;
 
-      entries?.forEach((entry: any) => {
-        const amount = parseFloat(entry.total_amount || 0);
-        const accountName = entry.credit_account || entry.description;
-        
-        if (entry.transaction_type === "cash_sale" || entry.transaction_type === "credit_sale") {
-          revenueMap.set(accountName, (revenueMap.get(accountName) || 0) + amount);
-          revTotal += amount;
-        } else if (
-          entry.transaction_type === "cash_purchase" ||
-          entry.transaction_type === "credit_purchase" ||
-          entry.transaction_type === "expense" ||
-          entry.transaction_type === "payroll"
-        ) {
-          expenseMap.set(accountName, (expenseMap.get(accountName) || 0) + amount);
-          expTotal += amount;
+      accounts?.forEach((account: any) => {
+        // net_balance is (debit - credit)
+        // For Income (Credit nature), positive balance means Debit > Credit (Loss/Decrease), negative means Credit > Debit (Gain)
+        // Usually we want positive numbers for display.
+        // Income: Credit is increase. So if Credit > Debit, net_balance is negative.
+        // We want to show positive revenue. So we take -net_balance.
+
+        // Expense: Debit is increase. So if Debit > Credit, net_balance is positive.
+        // We want to show positive expense. So we take net_balance.
+
+        const balance = parseFloat(account.net_balance || 0);
+
+        if (account.account_type === 'income') {
+          // Income is normally Credit balance (negative in our view logic of debit-credit)
+          // But wait, let's check the view definition: (SUM(jel.debit) - SUM(jel.credit)) as net_balance
+          // Yes.
+          const amount = -balance;
+          if (amount !== 0) {
+            revenueAccounts.push({ accountName: account.account_name, amount });
+            revenueTotal += amount;
+          }
+        } else {
+          // Expense is normally Debit balance (positive)
+          const amount = balance;
+          if (amount !== 0) {
+            expenseAccounts.push({ accountName: account.account_name, amount });
+            expenseTotal += amount;
+          }
         }
       });
 
-      revenueMap.forEach((amount, accountName) => {
-        revenue.push({ accountName, amount });
-      });
-
-      expenseMap.forEach((amount, accountName) => {
-        expenses.push({ accountName, amount });
-      });
-
-      setRevenueAccounts(revenue);
-      setExpenseAccounts(expenses);
-      setTotalRevenue(revTotal);
-      setTotalExpenses(expTotal);
+      setRevenue(revenueAccounts);
+      setExpenses(expenseAccounts);
+      setTotalRevenue(revenueTotal);
+      setTotalExpenses(expenseTotal);
     } catch (error) {
-      console.error("Error fetching P&L data:", error);
+      console.error("Error fetching profit loss data:", error);
     } finally {
       setLoading(false);
     }
@@ -86,8 +91,6 @@ const ProfitLoss = () => {
     }).format(amount);
   };
 
-  const netProfit = totalRevenue - totalExpenses;
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -96,6 +99,8 @@ const ProfitLoss = () => {
     );
   }
 
+  const netProfit = totalRevenue - totalExpenses;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -103,65 +108,63 @@ const ProfitLoss = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Profit and Loss Statement</h1>
-          <p className="text-muted-foreground">Income and expenses overview</p>
+          <h1 className="text-3xl font-bold">Profit & Loss Statement</h1>
+          <p className="text-muted-foreground">Income and expense overview</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-center text-2xl">Profit and Loss Statement</CardTitle>
-          <p className="text-center text-sm text-muted-foreground">For the Period</p>
+          <CardTitle className="text-center text-2xl">Profit & Loss</CardTitle>
+          <p className="text-center text-sm text-muted-foreground">Period Ending Current Date</p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-8">
-            {/* Expenses Side */}
-            <div className="border-r-2 border-border pr-6">
-              <h3 className="text-lg font-semibold mb-4 text-center bg-muted py-2 rounded">
-                Expenses
+          <div className="space-y-8 max-w-3xl mx-auto">
+            {/* Revenue Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 bg-muted py-2 px-4 rounded">
+                Revenue
               </h3>
-              <div className="space-y-2">
-                {expenseAccounts.map((account, idx) => (
+              <div className="space-y-2 px-4">
+                {revenue.map((account, idx) => (
                   <div key={idx} className="flex justify-between py-1 border-b border-border/50">
                     <span className="text-sm">{account.accountName}</span>
                     <span className="text-sm font-medium">{formatCurrency(account.amount)}</span>
                   </div>
                 ))}
-                {netProfit > 0 && (
-                  <div className="flex justify-between py-2 border-t-2 border-border mt-4 font-bold text-success">
-                    <span>Net Profit</span>
-                    <span>{formatCurrency(netProfit)}</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-between py-2 border-t-2 border-primary mt-4 font-bold text-lg">
-                <span>Total</span>
-                <span>{formatCurrency(totalExpenses + (netProfit > 0 ? netProfit : 0))}</span>
+                <div className="flex justify-between py-2 border-t-2 border-primary mt-4 font-bold text-lg">
+                  <span>Total Revenue</span>
+                  <span>{formatCurrency(totalRevenue)}</span>
+                </div>
               </div>
             </div>
 
-            {/* Revenue Side */}
-            <div className="pl-6">
-              <h3 className="text-lg font-semibold mb-4 text-center bg-muted py-2 rounded">
-                Revenue
+            {/* Expenses Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 bg-muted py-2 px-4 rounded">
+                Expenses
               </h3>
-              <div className="space-y-2">
-                {revenueAccounts.map((account, idx) => (
+              <div className="space-y-2 px-4">
+                {expenses.map((account, idx) => (
                   <div key={idx} className="flex justify-between py-1 border-b border-border/50">
                     <span className="text-sm">{account.accountName}</span>
                     <span className="text-sm font-medium">{formatCurrency(account.amount)}</span>
                   </div>
                 ))}
-                {netProfit < 0 && (
-                  <div className="flex justify-between py-2 border-t-2 border-border mt-4 font-bold text-destructive">
-                    <span>Net Loss</span>
-                    <span>{formatCurrency(Math.abs(netProfit))}</span>
-                  </div>
-                )}
+                <div className="flex justify-between py-2 border-t-2 border-primary mt-4 font-bold text-lg">
+                  <span>Total Expenses</span>
+                  <span>{formatCurrency(totalExpenses)}</span>
+                </div>
               </div>
-              <div className="flex justify-between py-2 border-t-2 border-primary mt-4 font-bold text-lg">
-                <span>Total</span>
-                <span>{formatCurrency(totalRevenue + (netProfit < 0 ? Math.abs(netProfit) : 0))}</span>
+            </div>
+
+            {/* Net Profit Section */}
+            <div className="mt-8 pt-4 border-t-4 border-primary">
+              <div className="flex justify-between items-center px-4">
+                <span className="text-xl font-bold">Net Profit</span>
+                <span className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(netProfit)}
+                </span>
               </div>
             </div>
           </div>

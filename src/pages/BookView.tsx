@@ -11,15 +11,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-interface BookEntry {
+interface JournalEntry {
   id: string;
   transaction_date: string;
   description: string;
   party_name: string | null;
   transaction_type: string;
-  total_amount: number;
   reference_number: string | null;
-  book_category: string;
+  journal_entry_lines: {
+    debit: number;
+  }[];
 }
 
 const bookTitles: Record<string, string> = {
@@ -37,24 +38,28 @@ const bookTitles: Record<string, string> = {
   "bills-payable-book": "Bills Payable Book",
 };
 
-const bookCategoryMap: Record<string, string> = {
-  "book-view": "all",
-  "sales-book": "sales_book",
-  "purchase-book": "purchase_book",
-  "cash-book": "cash_book",
-  "bank-book": "bank_book",
-  "payroll-book": "payroll_book",
-  "petty-cash-book": "petty_cash_book",
-  "general-journal": "general_journal",
-  "sales-return-book": "sales_return_book",
-  "purchase-return-book": "purchase_return_book",
-  "bills-receivable-book": "bills_receivable_book",
-  "bills-payable-book": "bills_payable_book",
+const bookTypeToTransactionTypes: Record<string, string[]> = {
+  "sales-book": ["cash_sale", "credit_sale"],
+  "purchase-book": ["cash_purchase", "credit_purchase"],
+  "cash-book": ["cash_sale", "cash_purchase", "cash_receipt", "cash_payment"],
+  "bank-book": ["bank_receipt", "bank_payment"],
+  "payroll-book": ["payroll"],
+  "general-journal": ["adjustment", "opening_balance"],
+  "sales-return-book": ["sales_return"],
+  "purchase-return-book": ["purchase_return"],
+  // Add others as needed
+};
+
+const bookViews: Record<string, string> = {
+  "cash-book": "view_ledger_cash",
+  "bank-book": "view_ledger_bank",
+  "sales-book": "view_ledger_sales",
+  "purchase-book": "view_ledger_purchases",
 };
 
 const BookView = () => {
   const { bookType } = useParams<{ bookType: string }>();
-  const [entries, setEntries] = useState<BookEntry[]>([]);
+  const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,22 +71,44 @@ const BookView = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const bookCategory = bookType ? bookCategoryMap[bookType] : "all";
+      let data = [];
+      let error = null;
 
-      let query = supabase
-        .from("entries")
-        .select("*")
-        .eq("user_id", user.id);
+      if (bookType && bookViews[bookType]) {
+        // Fetch from specific view
+        const result = await supabase
+          .from(bookViews[bookType] as any)
+          .select("*")
+          .eq("user_id", user.id)
+          .order("transaction_date", { ascending: false });
 
-      if (bookCategory !== "all") {
-        query = query.eq("book_category", bookCategory as any);
+        data = result.data || [];
+        error = result.error;
+      } else {
+        // Fallback for other books (using original logic but adapted)
+        let query = supabase
+          .from("journal_entries")
+          .select(`
+            *,
+            journal_entry_lines (
+              debit,
+              credit
+            )
+          `)
+          .eq("user_id", user.id);
+
+        if (bookType && bookType !== "book-view" && bookTypeToTransactionTypes[bookType]) {
+          query = query.in("transaction_type", bookTypeToTransactionTypes[bookType]);
+        }
+
+        const result = await query.order("transaction_date", { ascending: false });
+        data = result.data || [];
+        error = result.error;
       }
-
-      const { data, error } = await query.order("transaction_date", { ascending: false });
 
       if (error) throw error;
 
-      setEntries(data || []);
+      setEntries(data);
     } catch (error: any) {
       console.error("Error fetching entries:", error);
     } finally {
@@ -106,6 +133,18 @@ const BookView = () => {
 
   const formatTransactionType = (type: string) => {
     return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
+  const getAmount = (entry: any) => {
+    // If from view
+    if (entry.net_change !== undefined) return entry.net_change;
+    if (entry.amount !== undefined) return entry.amount;
+
+    // If from journal_entries (fallback)
+    if (entry.journal_entry_lines) {
+      return entry.journal_entry_lines.reduce((sum: number, line: any) => sum + (line.debit || 0), 0);
+    }
+    return 0;
   };
 
   if (loading) {
@@ -161,7 +200,9 @@ const BookView = () => {
                       <TableCell>
                         {entry.reference_number || "-"}
                       </TableCell>
-                      <TableCell>{entry.description}</TableCell>
+                      <TableCell className="max-w-md truncate" title={entry.description || ""}>
+                        {entry.description}
+                      </TableCell>
                       <TableCell>{entry.party_name || "-"}</TableCell>
                       <TableCell>
                         <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-primary/10 text-primary">
@@ -169,7 +210,7 @@ const BookView = () => {
                         </span>
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {formatCurrency(parseFloat(entry.total_amount.toString()))}
+                        {formatCurrency(getAmount(entry))}
                       </TableCell>
                     </TableRow>
                   ))}

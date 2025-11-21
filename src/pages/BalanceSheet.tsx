@@ -29,8 +29,9 @@ const BalanceSheet = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: entries, error } = await supabase
-        .from("entries")
+      // Fetch from trial balance view (all accounts)
+      const { data: accounts, error } = await supabase
+        .from("view_trial_balance" as any)
         .select("*")
         .eq("user_id", user.id);
 
@@ -39,45 +40,57 @@ const BalanceSheet = () => {
       const assetAccounts: AccountData[] = [];
       const liabilityAccounts: AccountData[] = [];
       const equityAccounts: AccountData[] = [];
+
       let assetsTotal = 0;
       let liabilitiesTotal = 0;
       let equityTotal = 0;
+      let incomeTotal = 0;
+      let expenseTotal = 0;
 
-      // Group by ledger categories
-      const accountMap = new Map<string, number>();
+      accounts?.forEach((account: any) => {
+        // net_balance is (debit - credit)
+        const balance = parseFloat(account.net_balance || 0);
+        const type = account.account_type;
 
-      entries?.forEach((entry) => {
-        const amount = parseFloat(entry.total_amount.toString());
-        const accountKey = entry.debit_account || entry.description;
-        
-        if (accountKey) {
-          accountMap.set(accountKey, (accountMap.get(accountKey) || 0) + amount);
+        if (type === 'asset') {
+          // Asset: Debit is increase (positive net_balance)
+          const amount = balance;
+          if (amount !== 0) {
+            assetAccounts.push({ accountName: account.account_name, amount });
+            assetsTotal += amount;
+          }
+        } else if (type === 'liability') {
+          // Liability: Credit is increase (negative net_balance)
+          // We want positive display
+          const amount = -balance;
+          if (amount !== 0) {
+            liabilityAccounts.push({ accountName: account.account_name, amount });
+            liabilitiesTotal += amount;
+          }
+        } else if (type === 'equity') {
+          // Equity: Credit is increase (negative net_balance)
+          const amount = -balance;
+          if (amount !== 0) {
+            equityAccounts.push({ accountName: account.account_name, amount });
+            equityTotal += amount;
+          }
+        } else if (type === 'income') {
+          // Income: Credit is increase (negative net_balance)
+          // Revenue contributes positively to Net Income
+          incomeTotal += -balance;
+        } else if (type === 'expense') {
+          // Expense: Debit is increase (positive net_balance)
+          // Expense reduces Net Income
+          expenseTotal += balance;
         }
       });
 
-      // Categorize accounts
-      accountMap.forEach((amount, accountName) => {
-        const accountLower = accountName.toLowerCase();
-        
-        if (accountLower.includes("cash") || 
-            accountLower.includes("bank") ||
-            accountLower.includes("inventory") ||
-            accountLower.includes("receivable") ||
-            accountLower.includes("asset")) {
-          assetAccounts.push({ accountName, amount });
-          assetsTotal += amount;
-        } else if (accountLower.includes("payable") ||
-                   accountLower.includes("liability") ||
-                   accountLower.includes("loan")) {
-          liabilityAccounts.push({ accountName, amount });
-          liabilitiesTotal += amount;
-        } else if (accountLower.includes("capital") ||
-                   accountLower.includes("equity") ||
-                   accountLower.includes("owner")) {
-          equityAccounts.push({ accountName, amount });
-          equityTotal += amount;
-        }
-      });
+      // Calculate Net Income and add to Equity
+      const netIncome = incomeTotal - expenseTotal;
+      if (netIncome !== 0) {
+        equityAccounts.push({ accountName: "Net Income (Retained Earnings)", amount: netIncome });
+        equityTotal += netIncome;
+      }
 
       setAssets(assetAccounts);
       setLiabilities(liabilityAccounts);

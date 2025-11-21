@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { toast } from "sonner";
 
 const Dashboard = () => {
@@ -35,6 +35,17 @@ const Dashboard = () => {
     navigate("/auth");
   };
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      toast.success("Signed out successfully");
+      navigate("/auth");
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -53,9 +64,13 @@ const Dashboard = () => {
         <div className="flex-1 flex flex-col">
           <header className="border-b bg-card h-16 flex items-center justify-between px-4 shadow-soft">
             <SidebarTrigger />
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="ml-auto"
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
           </header>
           <main className="flex-1 p-6 bg-muted/30">

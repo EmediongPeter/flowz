@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, DollarSign, FileText, Package, Target, Plus, Trash2 } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, FileText, Package, Target, Plus, Trash2, Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,7 +56,7 @@ const DashboardHome = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
-  
+
   // Product state
   const [products, setProducts] = useState<Product[]>([]);
   const [productName, setProductName] = useState("");
@@ -71,8 +71,8 @@ const DashboardHome = () => {
   const [targetYear, setTargetYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
-    fetchMetrics();
     fetchSetupData();
+    fetchMetrics();
   }, []);
 
   const fetchMetrics = async () => {
@@ -80,9 +80,11 @@ const DashboardHome = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: entries, error } = await supabase
-        .from("entries")
+      // Fetch from trial balance view
+      const { data: accounts, error } = await supabase
+        .from("view_trial_balance" as any)
         .select("*")
+        .in("account_type", ["income", "expense"])
         .eq("user_id", user.id);
 
       if (error) throw error;
@@ -90,22 +92,15 @@ const DashboardHome = () => {
       let revenue = 0;
       let cost = 0;
 
-      entries?.forEach((entry: any) => {
-        const amount = parseFloat(entry.total_amount || 0);
-        
-        // Revenue from sales
-        if (entry.transaction_type === "cash_sale" || entry.transaction_type === "credit_sale") {
-          revenue += amount;
-        }
-        
-        // Costs from purchases and expenses
-        if (
-          entry.transaction_type === "cash_purchase" || 
-          entry.transaction_type === "credit_purchase" ||
-          entry.transaction_type === "expense" ||
-          entry.transaction_type === "payroll"
-        ) {
-          cost += amount;
+      accounts?.forEach((account: any) => {
+        const balance = parseFloat(account.net_balance || 0);
+
+        if (account.account_type === 'income') {
+          // Income: Credit is increase (negative net_balance)
+          revenue += -balance;
+        } else if (account.account_type === 'expense') {
+          // Expense: Debit is increase (positive net_balance)
+          cost += balance;
         }
       });
 
@@ -124,7 +119,6 @@ const DashboardHome = () => {
   const fetchSetupData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
       // Fetch products
       const { data: productsData, error: productsError } = await supabase
@@ -143,9 +137,9 @@ const DashboardHome = () => {
         .eq("user_id", user.id)
         .eq("target_month", targetMonth)
         .eq("target_year", targetYear)
-        .single();
+        .maybeSingle();
 
-      if (targetsError && targetsError.code !== "PGRST116") throw targetsError;
+      if (targetsError) throw targetsError;
       if (targetsData) {
         setProfitTargets(targetsData);
         setMonthlyTarget(targetsData.monthly_target.toString());
@@ -164,7 +158,6 @@ const DashboardHome = () => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
       const { error } = await supabase.from("products").insert({
         user_id: user.id,
@@ -208,7 +201,6 @@ const DashboardHome = () => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
       const { error } = await supabase.from("profit_targets").upsert(
         {
@@ -299,9 +291,8 @@ const DashboardHome = () => {
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold ${
-                metrics.netProfit >= 0 ? "text-success" : "text-destructive"
-              }`}
+              className={`text-2xl font-bold ${metrics.netProfit >= 0 ? "text-success" : "text-destructive"
+                }`}
             >
               {formatCurrency(metrics.netProfit)}
             </div>
@@ -550,6 +541,52 @@ const DashboardHome = () => {
                   >
                     <FileText className="h-4 w-4 mr-2" />
                     Balance Sheet Statement
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/20 shadow-elegant">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Book className="h-5 w-5 text-primary" />
+              Ledger Books
+            </CardTitle>
+          </CardHeader>
+          <CardDescription className="px-6 text-muted-foreground">
+            View detailed transaction logs
+          </CardDescription>
+          <CardContent className="pt-6">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="w-full" variant="secondary">
+                  View Ledgers
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Select Ledger Book</DialogTitle>
+                  <DialogDescription>
+                    View transactions for specific accounts
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-3 pt-4">
+                  <Button variant="outline" onClick={() => navigate("/dashboard/cash-book")}>
+                    Cash Book
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/dashboard/bank-book")}>
+                    Bank Book
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/dashboard/sales-book")}>
+                    Sales Book
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/dashboard/purchase-book")}>
+                    Purchase Book
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/dashboard/book-view")}>
+                    General Journal
                   </Button>
                 </div>
               </DialogContent>

@@ -14,6 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          id: string
+          user_id: string | null
+          code: string | null
+          name: string
+          type: string
+          subtype: string | null
+          parent_account_id: string | null
+          is_system_default: boolean | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          code?: string | null
+          name: string
+          type: string
+          subtype?: string | null
+          parent_account_id?: string | null
+          is_system_default?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          code?: string | null
+          name?: string
+          type?: string
+          subtype?: string | null
+          parent_account_id?: string | null
+          is_system_default?: boolean | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      transaction_mappings: {
+        Row: {
+          id: string
+          transaction_type: string
+          debit_account_name: string
+          credit_account_name: string
+          is_system_default: boolean | null
+        }
+        Insert: {
+          id?: string
+          transaction_type: string
+          debit_account_name: string
+          credit_account_name: string
+          is_system_default?: boolean | null
+        }
+        Update: {
+          id?: string
+          transaction_type?: string
+          debit_account_name?: string
+          credit_account_name?: string
+          is_system_default?: boolean | null
+        }
+        Relationships: []
+      }
+      journal_entries: {
+        Row: {
+          id: string
+          user_id: string | null
+          transaction_date: string
+          transaction_type: string
+          reference_number: string | null
+          description: string | null
+          party_name: string | null
+          status: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          transaction_date?: string
+          transaction_type: string
+          reference_number?: string | null
+          description?: string | null
+          party_name?: string | null
+          status?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          transaction_date?: string
+          transaction_type?: string
+          reference_number?: string | null
+          description?: string | null
+          party_name?: string | null
+          status?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      journal_entry_lines: {
+        Row: {
+          id: string
+          journal_entry_id: string | null
+          account_id: string
+          description: string | null
+          debit: number | null
+          credit: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          journal_entry_id?: string | null
+          account_id: string
+          description?: string | null
+          debit?: number | null
+          credit?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          journal_entry_id?: string | null
+          account_id?: string
+          description?: string | null
+          debit?: number | null
+          credit?: number | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_lines_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       entries: {
         Row: {
           allowances: number | null

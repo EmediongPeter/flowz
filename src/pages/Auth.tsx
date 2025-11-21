@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Mail } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -15,6 +15,9 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [showMagicLinkSent, setShowMagicLinkSent] = useState(false);
+  const [magicLinkEmail, setMagicLinkEmail] = useState("");
+  const [activeTab, setActiveTab] = useState("signin");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -28,6 +31,7 @@ const Auth = () => {
         navigate("/dashboard");
       }
     });
+    console.log("🚀 ~ Auth ~ subscription:", subscription)
 
     return () => subscription.unsubscribe();
   }, [navigate]);
@@ -37,19 +41,26 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      // Sign up user with email and store full name in metadata
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
           },
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
+      console.log("🚀 ~ handleSignUp ~ error:", error)
+      console.log("🚀 ~ handleSignUp ~ data:", data)
 
       if (error) throw error;
-      toast.success("Account created successfully! Please check your email.");
+
+      // Show magic link sent message
+      setMagicLinkEmail(email);
+      setShowMagicLinkSent(true);
+      toast.success("Magic link sent! Check your email.");
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -82,15 +93,93 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
+
+      console.log("🚀 ~ handleGoogleSignIn ~ error:", error)
       if (error) throw error;
     } catch (error: any) {
       toast.error(error.message);
       setLoading(false);
     }
   };
+
+  const handleResendMagicLink = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: magicLinkEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) throw error;
+      toast.success("Magic link resent! Check your email.");
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Show magic link sent screen
+  if (showMagicLinkSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-primary p-4">
+        <Card className="w-full max-w-md shadow-medium">
+          <CardHeader className="text-center space-y-2">
+            <div className="flex justify-center mb-4">
+              <div className="bg-accent p-4 rounded-xl">
+                <Mail className="h-8 w-8 text-accent-foreground" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
+            <CardDescription>
+              We've sent a magic link to <span className="font-semibold text-foreground">{magicLinkEmail}</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground">
+              <p>Click the link in the email to verify your account and complete your onboarding.</p>
+              <p className="mt-2">The link will expire in 24 hours.</p>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleResendMagicLink}
+                disabled={loading}
+              >
+                {loading ? "Sending..." : "Resend magic link"}
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => {
+                  setShowMagicLinkSent(false);
+                  setMagicLinkEmail("");
+                  setEmail("");
+                  setPassword("");
+                  setFullName("");
+                  setActiveTab("signin");
+                }}
+              >
+                Back to sign in
+              </Button>
+            </div>
+
+            <div className="text-xs text-center text-muted-foreground">
+              Didn't receive the email? Check your spam folder.
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-primary p-4">
@@ -101,11 +190,11 @@ const Auth = () => {
               <BookOpen className="h-8 w-8 text-accent-foreground" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold">Flow Books</CardTitle>
+          <CardTitle className="text-3xl font-bold">Flowz</CardTitle>
           <CardDescription>Professional bookkeeping made simple</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>

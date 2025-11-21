@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -63,17 +63,17 @@ export default function Entry() {
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
   const [dueDate, setDueDate] = useState<Date | undefined>();
-  
+
   // Transaction Identity
   const [transactionType, setTransactionType] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [description, setDescription] = useState("");
-  
+
   // Party Details
   const [partyName, setPartyName] = useState("");
   const [partyType, setPartyType] = useState("");
   const [partyContact, setPartyContact] = useState("");
-  
+
   // Transaction Description
   const [category, setCategory] = useState("");
   const [productServiceName, setProductServiceName] = useState("");
@@ -81,7 +81,7 @@ export default function Entry() {
   const [unitPrice, setUnitPrice] = useState("");
   const [discount, setDiscount] = useState("");
   const [taxRate, setTaxRate] = useState("");
-  
+
   // Payment Information
   const [paymentType, setPaymentType] = useState("");
   const [paymentMode, setPaymentMode] = useState("");
@@ -89,31 +89,63 @@ export default function Entry() {
   const [bankName, setBankName] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
-  
+
   // Payroll Fields
   const [employeeId, setEmployeeId] = useState("");
   const [grossPay, setGrossPay] = useState("");
   const [allowances, setAllowances] = useState("");
   const [deductions, setDeductions] = useState("");
-  
+
   // Accounting Tags
   const [debitAccount, setDebitAccount] = useState("");
   const [creditAccount, setCreditAccount] = useState("");
   const [ledgerCategory, setLedgerCategory] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Mappings
+  const [mappings, setMappings] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchMappingsAndAccounts();
+  }, []);
+
+  const fetchMappingsAndAccounts = async () => {
+    try {
+      const { data: mappingsData } = await supabase.from("transaction_mappings").select("*");
+      let { data: accountsData } = await supabase.from("accounts").select("*");
+
+      if (!accountsData || accountsData.length === 0) {
+        console.log("No accounts found, initializing defaults...");
+        const { error } = await supabase.rpc('initialize_default_accounts' as any);
+        if (!error) {
+          const { data: newAccounts } = await supabase.from("accounts").select("*");
+          accountsData = newAccounts;
+          toast.success("Default accounts initialized");
+        } else {
+          console.error("Failed to initialize accounts:", error);
+        }
+      }
+
+      if (mappingsData) setMappings(mappingsData);
+      if (accountsData) setAccounts(accountsData);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
   const calculateAmounts = () => {
     const qty = parseFloat(quantity) || 0;
     const price = parseFloat(unitPrice) || 0;
     const disc = parseFloat(discount) || 0;
     const tax = parseFloat(taxRate) || 0;
-    
+
     const beforeTax = (qty * price) - disc;
     const taxAmount = (beforeTax * tax) / 100;
     const total = beforeTax + taxAmount;
     const paid = parseFloat(amountPaid) || 0;
     const balance = total - paid;
-    
+
     return {
       amountBeforeTax: beforeTax.toFixed(2),
       taxAmount: taxAmount.toFixed(2),
@@ -127,13 +159,13 @@ export default function Entry() {
     const allow = parseFloat(allowances) || 0;
     const deduc = parseFloat(deductions) || 0;
     const netPay = gross + allow - deduc;
-    
+
     return netPay.toFixed(2);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!transactionType) {
       toast.error("Please select a transaction type");
       return;
@@ -148,56 +180,79 @@ export default function Entry() {
         return;
       }
 
-      const amounts = transactionType === "payroll" 
-        ? { totalAmount: calculatePayroll(), amountBeforeTax: "0", taxAmount: "0", balanceDue: "0" }
-        : calculateAmounts();
+      // Calculate total amount
+      let total = 0;
+      if (transactionType === "payroll") {
+        total = parseFloat(calculatePayroll());
+      } else {
+        total = parseFloat(calculateAmounts().totalAmount);
+      }
 
-      // Get book category from backend function
-      const { data: bookCategory } = await supabase.rpc('assign_book_category', {
-        tx_type: transactionType as any
-      });
+      if (total <= 0) {
+        throw new Error("Total amount must be greater than 0");
+      }
 
-      const { error } = await supabase.from("entries").insert([{
-        user_id: user.id,
-        transaction_date: format(date, "yyyy-MM-dd"),
-        transaction_type: transactionType as any,
-        reference_number: referenceNumber || null,
-        book_category: bookCategory as any,
-        party_name: partyName || null,
-        party_type: (partyType || null) as any,
-        party_contact: partyContact || null,
+      // Construct rich description
+      const richDescription = [
         description,
-        category: category || null,
-        product_service_name: productServiceName || null,
-        quantity: quantity ? parseFloat(quantity) : null,
-        unit_price: unitPrice ? parseFloat(unitPrice) : null,
-        amount_before_tax: amounts.amountBeforeTax ? parseFloat(amounts.amountBeforeTax) : null,
-        discount: discount ? parseFloat(discount) : 0,
-        tax_rate: taxRate ? parseFloat(taxRate) : null,
-        tax_amount: amounts.taxAmount ? parseFloat(amounts.taxAmount) : null,
-        total_amount: parseFloat(amounts.totalAmount),
-        payment_type: (paymentType || null) as any,
-        payment_mode: (paymentMode || null) as any,
-        payment_reference: paymentReference || null,
-        bank_name: bankName || null,
-        bank_account: bankAccount || null,
-        amount_paid: amountPaid ? parseFloat(amountPaid) : null,
-        balance_due: amounts.balanceDue ? parseFloat(amounts.balanceDue) : 0,
-        due_date: dueDate ? format(dueDate, "yyyy-MM-dd") : null,
-        employee_id: employeeId || null,
-        gross_pay: grossPay ? parseFloat(grossPay) : null,
-        allowances: allowances ? parseFloat(allowances) : null,
-        deductions: deductions ? parseFloat(deductions) : null,
-        net_pay: transactionType === "payroll" ? parseFloat(calculatePayroll()) : null,
-        debit_account: debitAccount || null,
-        credit_account: creditAccount || null,
-        ledger_category: ledgerCategory || null,
-        notes: notes || null,
-      }]);
+        partyType ? `Party Type: ${partyType}` : null,
+        partyContact ? `Contact: ${partyContact}` : null,
+        category ? `Category: ${category}` : null,
+        productServiceName ? `Item: ${productServiceName}` : null,
+        paymentMode ? `Payment Mode: ${paymentMode}` : null,
+        paymentReference ? `Ref: ${paymentReference}` : null,
+        bankName ? `Bank: ${bankName}` : null,
+        notes ? `Notes: ${notes}` : null
+      ].filter(Boolean).join(" | ");
 
-      if (error) throw error;
+      // 1. Create Transaction Record
+      const { data: txData, error: txError } = await supabase
+        .from("transactions" as any)
+        .insert([{
+          user_id: user.id,
+          transaction_date: format(date, "yyyy-MM-dd"),
+          transaction_type: transactionType,
+          amount: total,
+          reference_number: referenceNumber || null,
+          description: richDescription,
+          party_name: partyName || null,
+          status: 'draft',
+          metadata: {
+            category,
+            productServiceName,
+            quantity,
+            unitPrice,
+            discount,
+            taxRate,
+            paymentType,
+            paymentMode,
+            paymentReference,
+            bankName,
+            bankAccount,
+            amountPaid,
+            dueDate,
+            employeeId,
+            grossPay,
+            allowances,
+            deductions
+          }
+        }])
+        .select()
+        .single();
 
-      toast.success("Entry created successfully!");
+      if (txError) throw txError;
+
+      // 2. Post Transaction (Call RPC)
+      const { data: postData, error: postError } = await supabase
+        .rpc('post_transaction' as any, { transaction_id: (txData as any).id });
+
+      if (postError) throw postError;
+
+      if (postData && !postData.success) {
+        throw new Error(postData.error || "Failed to post transaction");
+      }
+
+      toast.success("Transaction posted successfully!");
       navigate("/dashboard/book-view");
     } catch (error: any) {
       console.error("Error creating entry:", error);
@@ -604,7 +659,9 @@ export default function Entry() {
                       value={debitAccount}
                       onChange={(e) => setDebitAccount(e.target.value)}
                       placeholder="Account to debit"
+                      disabled
                     />
+                    <p className="text-xs text-muted-foreground">Auto-selected based on type</p>
                   </div>
 
                   <div className="space-y-2">
@@ -613,7 +670,9 @@ export default function Entry() {
                       value={creditAccount}
                       onChange={(e) => setCreditAccount(e.target.value)}
                       placeholder="Account to credit"
+                      disabled
                     />
+                    <p className="text-xs text-muted-foreground">Auto-selected based on type</p>
                   </div>
                 </div>
 
