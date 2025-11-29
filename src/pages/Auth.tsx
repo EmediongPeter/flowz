@@ -54,7 +54,7 @@ const Auth = () => {
       });
       console.log("🚀 ~ handleSignUp ~ error:", error)
       console.log("🚀 ~ handleSignUp ~ data:", data)
-
+      
       if (error) throw error;
 
       // Show magic link sent message
@@ -62,6 +62,7 @@ const Auth = () => {
       setShowMagicLinkSent(true);
       toast.success("Magic link sent! Check your email.");
     } catch (error: any) {
+      console.log("🚀 ~ handleSignUp ~ error:", error)
       toast.error(error.message);
     } finally {
       setLoading(false);
@@ -77,6 +78,7 @@ const Auth = () => {
         email,
         password,
       });
+      console.log("🚀 ~ handleSignIn ~ error:", error)
 
       if (error) throw error;
       toast.success("Signed in successfully!");
@@ -190,7 +192,7 @@ const Auth = () => {
               <BookOpen className="h-8 w-8 text-accent-foreground" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold">Flowz</CardTitle>
+          <CardTitle className="text-3xl font-bold">Flowz AI</CardTitle>
           <CardDescription>Professional bookkeeping made simple</CardDescription>
         </CardHeader>
         <CardContent>

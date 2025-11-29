@@ -189,6 +189,7 @@ const DashboardHome = () => {
         .select("full_name")
         .eq("id", user.id)
         .maybeSingle();
+      console.log("🚀 ~ fetchSetupData ~ profileData:", profileData)
 
       if (profileError) throw profileError;
       if (profileData && profileData.full_name) {
@@ -697,6 +698,12 @@ const DashboardHome = () => {
                   </Button>
                   <Button variant="outline" onClick={() => navigate("/dashboard/book-view")}>
                     General Journal
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/dashboard/accounts-payable")}>
+                    Accounts Payable
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/dashboard/accounts-receivable")}>
+                    Accounts Receivable
                   </Button>
                 </div>
               </DialogContent>

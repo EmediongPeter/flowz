@@ -36,6 +36,8 @@ const bookTitles: Record<string, string> = {
   "purchase-return-book": "Purchase Return Book",
   "bills-receivable-book": "Bills Receivable Book",
   "bills-payable-book": "Bills Payable Book",
+  "accounts-payable": "Accounts Payable",
+  "accounts-receivable": "Accounts Receivable",
 };
 
 const bookTypeToTransactionTypes: Record<string, string[]> = {
@@ -54,7 +56,10 @@ const bookViews: Record<string, string> = {
   "cash-book": "view_ledger_cash",
   "bank-book": "view_ledger_bank",
   "sales-book": "view_ledger_sales",
+
   "purchase-book": "view_ledger_purchases",
+  "accounts-payable": "view_ledger_accounts_payable",
+  "accounts-receivable": "view_ledger_accounts_receivable",
 };
 
 const BookView = () => {
@@ -74,6 +79,8 @@ const BookView = () => {
       let data = [];
       let error = null;
 
+      console.log("🚀 ~ fetchEntries ~ bookType:", bookType)
+      console.log("🚀 ~ fetchEntries ~ bookViews:", bookViews)
       if (bookType && bookViews[bookType]) {
         // Fetch from specific view
         const result = await supabase
@@ -81,6 +88,7 @@ const BookView = () => {
           .select("*")
           .eq("user_id", user.id)
           .order("transaction_date", { ascending: false });
+        console.log("🚀 ~ fetchEntries ~ result:", result)
 
         data = result.data || [];
         error = result.error;
@@ -96,12 +104,14 @@ const BookView = () => {
             )
           `)
           .eq("user_id", user.id);
+        console.log("🚀 ~ fetchEntries ~ query:", query)
 
         if (bookType && bookType !== "book-view" && bookTypeToTransactionTypes[bookType]) {
           query = query.in("transaction_type", bookTypeToTransactionTypes[bookType]);
         }
 
         const result = await query.order("transaction_date", { ascending: false });
+        console.log("🚀 ~ fetchEntries ~ result:", result)
         data = result.data || [];
         error = result.error;
       }

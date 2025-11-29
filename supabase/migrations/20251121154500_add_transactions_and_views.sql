@@ -18,14 +18,14 @@ CREATE TABLE IF NOT EXISTS transactions (
 -- Enable RLS on transactions
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own transactions" ON transactions
-    FOR SELECT USING (auth.uid() = user_id);
+--- CREATE POLICY "Users can view their own transactions" ON transactions
+    -- FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own transactions" ON transactions
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+--- CREATE POLICY "Users can insert their own transactions" ON transactions
+    -- FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own transactions" ON transactions
-    FOR UPDATE USING (auth.uid() = user_id);
+--- CREATE POLICY "Users can update their own transactions" ON transactions
+    -- FOR UPDATE USING (auth.uid() = user_id);
 
 -- Link journal_entries to transactions
 ALTER TABLE journal_entries 

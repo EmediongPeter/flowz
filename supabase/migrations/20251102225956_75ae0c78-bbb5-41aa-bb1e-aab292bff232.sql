@@ -19,25 +19,25 @@ CREATE TABLE IF NOT EXISTS public.risk_findings (
 ALTER TABLE public.risk_findings ENABLE ROW LEVEL SECURITY;
 
 -- Create policies
-CREATE POLICY "Users can view own risk findings"
-  ON public.risk_findings
-  FOR SELECT
-  USING (auth.uid() = user_id);
+-- CREATE POLICY "Users can view own risk findings"
+--   ON public.risk_findings
+--   FOR SELECT
+--   USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can create own risk findings"
-  ON public.risk_findings
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+-- CREATE POLICY "Users can create own risk findings"
+--   ON public.risk_findings
+--   FOR INSERT
+--   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update own risk findings"
-  ON public.risk_findings
-  FOR UPDATE
-  USING (auth.uid() = user_id);
+-- CREATE POLICY "Users can update own risk findings"
+--   ON public.risk_findings
+--   FOR UPDATE
+--   USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete own risk findings"
-  ON public.risk_findings
-  FOR DELETE
-  USING (auth.uid() = user_id);
+-- CREATE POLICY "Users can delete own risk findings"
+--   ON public.risk_findings
+--   FOR DELETE
+--   USING (auth.uid() = user_id);
 
 -- Create index for faster queries
 CREATE INDEX idx_risk_findings_user_id ON public.risk_findings(user_id);
