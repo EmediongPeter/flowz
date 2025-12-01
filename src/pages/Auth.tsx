@@ -78,7 +78,7 @@ const Auth = () => {
         email,
         password,
       });
-      console.log("🚀 ~ handleSignIn ~ error:", error)
+      console.log("🚀 ~ handleSignIn ~ error:", error) 
 
       if (error) throw error;
       toast.success("Signed in successfully!");
